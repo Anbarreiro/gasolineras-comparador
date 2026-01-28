@@ -4,14 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gasolineras y Cargadores - España</title>
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css"/>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
-
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -22,10 +19,10 @@
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}
 #map{height:100vh;width:100%;position:fixed;top:0;left:0;z-index:1}
 .sidebar{position:fixed;left:0;top:0;width:400px;height:100vh;background:white;box-shadow:2px 0 10px rgba(0,0,0,0.2);z-index:1000;display:flex;flex-direction:column}
-.sidebar-scroll{flex:1;overflow-y:auto}
-.comparator-panel{position:fixed;right:0;top:0;width:450px;height:100vh;background:white;box-shadow:-2px 0 10px rgba(0,0,0,0.2);z-index:1001;display:flex;flex-direction:column;transform:translateX(100%);transition:.3s}
+.comparator-panel{position:fixed;right:0;top:0;width:450px;height:100vh;background:white;box-shadow:-2px 0 10px rgba(0,0,0,0.2);z-index:1001;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s}
 .comparator-panel.open{transform:translateX(0)}
-.selected-for-compare{background:#dbeafe!important;border-left:4px solid #2563eb!important}
+.sidebar-scroll{flex:1;overflow-y:auto}
+.selected-for-compare{background-color:#dbeafe!important;border-left:4px solid #2563eb!important}
 @media(max-width:768px){
 .sidebar{width:100%;height:50vh;top:auto;bottom:0}
 .comparator-panel{width:100%;height:70vh}
@@ -44,42 +41,83 @@ let map=null,cluster=null,userMark=null;
 
 const App=()=>{
 const[gas,setGas]=useState([]);
+const[elec,setElec]=useState([]);
 const[items,setItems]=useState([]);
 const[load,setLoad]=useState(true);
+const[err,setErr]=useState(null);
 const[mode,setMode]=useState('gas');
 const[fuel,setFuel]=useState('Precio Gasolina 95 E5');
 const[search,setSearch]=useState('');
+const[sort,setSort]=useState('price');
 const[loc,setLoc]=useState(null);
+const[showF,setShowF]=useState(true);
+const[prov,setProv]=useState('');
+const[stats,setStats]=useState({min:0,max:0,avg:0});
+const[mapOk,setMapOk]=useState(false);
 const[comp,setComp]=useState(false);
 const[sel,setSel]=useState([]);
 
+const fuels=[
+'Precio Gasolina 95 E5',
+'Precio Gasolina 98 E5',
+'Precio Gasoleo A',
+'Precio Gasoleo B',
+'Precio Gasoleo Premium'
+];
+
 useEffect(()=>{
 if(!map){
-map=L.map('map').setView([40.4,-3.7],7);
+map=L.map('map').setView([40.4168,-3.7038],7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
 cluster=L.markerClusterGroup({maxClusterRadius:50});
 map.addLayer(cluster);
-setTimeout(()=>map.invalidateSize(),200);
+setTimeout(()=>{map.invalidateSize();setMapOk(true)},200);
 }
 fetchGas();
+fetchElec();
 getLoc();
 },[]);
 
 const fetchGas=async()=>{
+try{
+setLoad(true);
 const r=await fetch('https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/');
 const d=await r.json();
-const g=d.ListaEESSPrecio.map(s=>({
+setGas(d.ListaEESSPrecio.map(s=>({
 id:'g-'+s.IDEESS,
 type:'gas',
 name:s['Rótulo'],
+addr:s['Dirección'],
 town:s['Municipio'],
 prov:s['Provincia'],
 lat:+s['Latitud'].replace(',','.'),
 lng:+s['Longitud (WGS84)'].replace(',','.'),
-price:+s[fuel]?.replace(',','.')||null
-}));
-setGas(g);
+p:{
+'Precio Gasolina 95 E5':+s['Precio Gasolina 95 E5']?.replace(',','.'),
+'Precio Gasolina 98 E5':+s['Precio Gasolina 98 E5']?.replace(',','.'),
+'Precio Gasoleo A':+s['Precio Gasoleo A']?.replace(',','.'),
+'Precio Gasoleo B':+s['Precio Gasoleo B']?.replace(',','.'),
+'Precio Gasoleo Premium':+s['Precio Gasoleo Premium']?.replace(',','.')
+}
+})));
 setLoad(false);
+}catch{setErr('Error')}
+};
+
+const fetchElec=async()=>{
+const r=await fetch('https://api.openchargemap.io/v3/poi/?output=json&countrycode=ES&maxresults=2000');
+const d=await r.json();
+setElec(d.map(c=>({
+id:'e-'+c.ID,
+type:'elec',
+name:c.AddressInfo?.Title,
+addr:c.AddressInfo?.AddressLine1,
+town:c.AddressInfo?.Town,
+prov:c.AddressInfo?.StateOrProvince,
+lat:c.AddressInfo?.Latitude,
+lng:c.AddressInfo?.Longitude,
+conn:c.Connections||[]
+})));
 };
 
 const getLoc=()=>{
@@ -88,104 +126,83 @@ const l={lat:p.coords.latitude,lng:p.coords.longitude};
 setLoc(l);
 map.setView([l.lat,l.lng],11);
 if(userMark)userMark.remove();
-userMark=L.marker([l.lat,l.lng]).addTo(map).bindPopup('📍 Tú');
+userMark=L.marker([l.lat,l.lng]).addTo(map);
 });
 };
 
 useEffect(()=>{
-let res=[...gas];
-if(search){
-res=res.filter(i=>
-i.name?.toLowerCase().includes(search.toLowerCase())||
-i.town?.toLowerCase().includes(search.toLowerCase())
-);
-}
-setItems(res);
-},[gas,search]);
+let res=[];
+if(mode!=='elec')res=res.concat(gas.filter(g=>g.p[fuel]));
+if(mode!=='gas')res=res.concat(elec);
+if(search)res=res.filter(i=>i.name?.toLowerCase().includes(search.toLowerCase())||i.town?.toLowerCase().includes(search.toLowerCase()));
+if(sort==='price'&&mode!=='elec')res.sort((a,b)=>(a.p?.[fuel]||999)-(b.p?.[fuel]||999));
+setItems(res.slice(0,1000));
+},[gas,elec,mode,search,fuel,sort]);
 
 useEffect(()=>{
-if(!cluster)return;
+if(!cluster||!mapOk)return;
 cluster.clearLayers();
 items.forEach(i=>{
 if(!i.lat||!i.lng)return;
-const m=L.marker([i.lat,i.lng]).bindPopup(
-`<strong>${i.name}</strong><br>${i.town} (${i.prov})<br>${i.price?.toFixed(3)} €/L`
-);
-cluster.addLayer(m);
+cluster.addLayer(L.marker([i.lat,i.lng]));
 });
-},[items]);
+},[items,mapOk]);
 
-const toggleCompare=()=>{if(comp)setSel([]);setComp(!comp)};
-const toggleSelect=i=>{
-if(sel.find(x=>x.id===i.id))setSel(sel.filter(x=>x.id!==i.id));
-else if(sel.length<2)setSel([...sel,i]);
+const togComp=()=>{if(comp)setSel([]);setComp(!comp)};
+const togSel=s=>{
+if(s.type!=='gas')return;
+if(sel.find(x=>x.id===s.id))setSel(sel.filter(x=>x.id!==s.id));
+else if(sel.length<2)setSel([...sel,s]);
 };
 
 if(load)return<div className="sidebar flex items-center justify-center">Cargando…</div>;
+if(err)return<div className="sidebar">{err}</div>;
 
-return(
-<>
+return<>
 <div className="sidebar">
-<div className="p-4 bg-blue-600 text-white flex justify-between items-center">
+<div className="p-4 bg-blue-600 text-white flex justify-between">
 <span>⛽ Gasolineras</span>
-<button onClick={toggleCompare} className="bg-white text-blue-600 px-3 py-1 rounded text-sm">
-{comp?'Cancelar':'Comparar'}
-</button>
+<button onClick={togComp}>{comp?'Cerrar':'Comparar'}</button>
 </div>
-
 <div className="p-4">
-<input
-className="w-full border p-2 rounded"
-placeholder="Buscar"
-value={search}
-onChange={e=>setSearch(e.target.value)}
-/>
+<input value={search} onChange={e=>setSearch(e.target.value)} className="w-full border p-2"/>
 </div>
-
 <div className="sidebar-scroll">
 {items.map(i=>(
-<div key={i.id} className={`p-4 border-b ${sel.find(x=>x.id===i.id)?'selected-for-compare':''}`}>
+<div key={i.id} className={`p-3 border-b ${sel.find(x=>x.id===i.id)?'selected-for-compare':''}`}>
 <strong>{i.name}</strong>
-<div className="text-xs text-gray-600">{i.town} · {i.prov}</div>
-<div className="font-bold">{i.price?.toFixed(3)} €/L</div>
-{comp&&(
-<button
-onClick={()=>toggleSelect(i)}
-className="mt-2 text-xs bg-blue-600 text-white px-2 py-1 rounded"
->
-Seleccionar
-</button>
-)}
+<div className="text-xs">{i.town} · {i.prov}</div>
+{i.type==='gas'&&<div>{i.p[fuel]?.toFixed(3)} €/L</div>}
+{comp&&i.type==='gas'&&<button onClick={()=>togSel(i)}>Seleccionar</button>}
 </div>
 ))}
 </div>
 </div>
 
-<Comparator stations={sel} />
-</>
-);
+<Comp stations={sel} fuel={fuel} loc={loc} onClose={()=>setSel([])}/>
+</>;
 };
 
-const Comparator=({stations})=>{
+const Comp=({stations,fuel,loc,onClose})=>{
+const[amt,setAmt]=useState(50);
+const[cons,setCons]=useState(6);
 if(stations.length!==2)return null;
-const[a,b]=stations;
-const diff=(b.price-a.price).toFixed(3);
+
+const[s1,s2]=stations;
+const p1=s1.p[fuel],p2=s2.p[fuel];
+const lDiff=Math.abs(amt/p2-amt/p1);
+const sav=lDiff*Math.min(p1,p2);
 
 return(
 <div className="comparator-panel open">
-<div className="p-4 bg-purple-600 text-white font-bold">⚖️ Comparador</div>
-<div className="p-4 space-y-4">
-<div>
-<strong>{a.name}</strong>
-<div>{a.price.toFixed(3)} €/L</div>
+<div className="p-4 bg-purple-600 text-white flex justify-between">
+<span>⚖️ Comparador</span>
+<button onClick={onClose}>×</button>
 </div>
-<div>
-<strong>{b.name}</strong>
-<div>{b.price.toFixed(3)} €/L</div>
-</div>
-<div className="font-bold text-lg">
-Diferencia: {diff} €/L
-</div>
+<div className="p-4">
+<div>{s1.name}: {p1.toFixed(3)}€</div>
+<div>{s2.name}: {p2.toFixed(3)}€</div>
+<div className="font-bold mt-2">Ahorro: {sav.toFixed(2)}€</div>
 </div>
 </div>
 );
