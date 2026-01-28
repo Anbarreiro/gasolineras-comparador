@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gasolineras y Cargadores España</title>
 
-    <!-- Leaflet CSS -->
+    <!-- Leaflet -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css" />
 
-    <!-- JS libs -->
+    <!-- JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -21,80 +21,175 @@
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow:hidden; }
-
-        #map {
-            height: 100vh;
-            width: 100%;
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 1;
-        }
+        #map { height:100vh; width:100%; position:fixed; top:0; left:0; z-index:1; }
 
         .sidebar {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 400px;
-            height: 100vh;
-            background: white;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.2);
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
+            position:fixed; left:0; top:0; width:400px; height:100vh;
+            background:white; z-index:1000; display:flex; flex-direction:column;
+            box-shadow:2px 0 10px rgba(0,0,0,.2);
         }
-
-        .comparator-panel {
-            position: fixed;
-            right: 0;
-            top: 0;
-            width: 450px;
-            height: 100vh;
-            background: white;
-            box-shadow: -2px 0 10px rgba(0,0,0,0.2);
-            z-index: 1001;
-            display: flex;
-            flex-direction: column;
-            transform: translateX(100%);
-            transition: transform 0.3s ease;
-        }
-
-        .comparator-panel.open { transform: translateX(0); }
 
         .sidebar-scroll { flex:1; overflow-y:auto; }
-        .sidebar-scroll::-webkit-scrollbar { width:8px; }
-        .sidebar-scroll::-webkit-scrollbar-thumb { background:#888; border-radius:4px; }
+        .selected-for-compare { background:#dbeafe !important; border-left:4px solid #2563eb !important; }
 
-        .selected-for-compare {
-            background-color: #dbeafe !important;
-            border-left: 4px solid #2563eb !important;
+        .comparator-panel {
+            position:fixed; right:0; top:0; width:450px; height:100vh;
+            background:white; z-index:1001;
+            transform:translateX(100%); transition:.3s;
+            display:flex; flex-direction:column;
+            box-shadow:-2px 0 10px rgba(0,0,0,.2);
         }
+        .comparator-panel.open { transform:translateX(0); }
 
-        @media (max-width: 768px) {
-            .sidebar { width:100%; height:50vh; top:auto; bottom:0; }
-            .comparator-panel { width:100%; height:70vh; }
-            #map { height:50vh; }
+        @media (max-width:768px){
+            .sidebar{width:100%; height:50vh; bottom:0; top:auto;}
+            #map{height:50vh;}
+            .comparator-panel{width:100%; height:70vh;}
         }
     </style>
 </head>
 
 <body>
-    <div id="map"></div>
-    <div id="root"></div>
+<div id="map"></div>
+<div id="root"></div>
 
-    <script type="text/babel">
-        /* === TODO TU CÓDIGO REACT + MAPA === */
-        /* NO se ha tocado lógica, solo está todo en un único HTML */
+<script type="text/babel">
 
-        const { useState, useEffect } = React;
-        let mapInstance = null;
-        let markerClusterGroup = null;
-        let userMarker = null;
+const { useState, useEffect } = React;
 
-        /* --- AQUÍ VA EXACTAMENTE TODO TU CÓDIGO --- */
-        /* (idéntico al que pasaste, sin cortar nada) */
+let mapInstance = null;
+let markerClusterGroup = null;
+let userMarker = null;
 
-        ReactDOM.render(<App />, document.getElementById('root'));
-    </script>
+const App = () => {
+
+    const [gasStations, setGasStations] = useState([]);
+    const [chargers, setChargers] = useState([]);
+    const [filteredItems, setFilteredItems] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const [viewMode, setViewMode] = useState('gas');
+    const [selectedFuel, setSelectedFuel] = useState('Precio Gasolina 95 E5');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [sortBy, setSortBy] = useState('price');
+    const [userLocation, setUserLocation] = useState(null);
+    const [selectedProvince, setSelectedProvince] = useState('');
+
+    const [priceStats, setPriceStats] = useState({ min:0, max:0, avg:0 });
+    const [mapInitialized, setMapInitialized] = useState(false);
+    const [compareMode, setCompareMode] = useState(false);
+    const [compareStations, setCompareStations] = useState([]);
+
+    const fuelTypes = [
+        'Precio Gasolina 95 E5',
+        'Precio Gasolina 98 E5',
+        'Precio Gasoleo A',
+        'Precio Gasoleo B',
+        'Precio Gasoleo Premium'
+    ];
+
+    useEffect(() => {
+        initMap();
+        fetchGasStations();
+        fetchChargers();
+        getUserLocation();
+    }, []);
+
+    const initMap = () => {
+        if (mapInstance) return;
+        mapInstance = L.map('map').setView([40.4, -3.7], 7);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance);
+        markerClusterGroup = L.markerClusterGroup();
+        mapInstance.addLayer(markerClusterGroup);
+        setTimeout(() => { mapInstance.invalidateSize(); setMapInitialized(true); }, 200);
+    };
+
+    const fetchGasStations = async () => {
+        try {
+            const res = await fetch('https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/');
+            const data = await res.json();
+            const list = (data.ListaEESSPrecio || []).map(s => ({
+                id: 'gas-' + s.IDEESS,
+                type: 'gas',
+                name: s['Rótulo'],
+                town: s.Municipio,
+                province: s.Provincia,
+                lat: parseFloat(s.Latitud?.replace(',', '.')),
+                lng: parseFloat(s['Longitud (WGS84)']?.replace(',', '.')),
+                prices: {
+                    'Precio Gasolina 95 E5': parseFloat(s['Precio Gasolina 95 E5']?.replace(',', '.')) || null,
+                    'Precio Gasolina 98 E5': parseFloat(s['Precio Gasolina 98 E5']?.replace(',', '.')) || null,
+                    'Precio Gasoleo A': parseFloat(s['Precio Gasoleo A']?.replace(',', '.')) || null,
+                    'Precio Gasoleo B': parseFloat(s['Precio Gasoleo B']?.replace(',', '.')) || null,
+                    'Precio Gasoleo Premium': parseFloat(s['Precio Gasoleo Premium']?.replace(',', '.')) || null
+                }
+            }));
+            setGasStations(list);
+            setLoading(false);
+        } catch {
+            setError('Error cargando gasolineras');
+        }
+    };
+
+    const fetchChargers = async () => {
+        try {
+            const res = await fetch('https://api.openchargemap.io/v3/poi/?output=json&countrycode=ES&maxresults=2000');
+            const data = await res.json();
+            setChargers((data || []).map(c => ({
+                id: 'charger-' + c.ID,
+                type: 'charger',
+                name: c.AddressInfo?.Title,
+                town: c.AddressInfo?.Town,
+                province: c.AddressInfo?.StateOrProvince,
+                lat: c.AddressInfo?.Latitude,
+                lng: c.AddressInfo?.Longitude,
+                connections: c.Connections || [],
+                operator: c.OperatorInfo?.Title
+            })));
+        } catch {}
+    };
+
+    const getUserLocation = () => {
+        navigator.geolocation?.getCurrentPosition(pos => {
+            const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            setUserLocation(loc);
+            mapInstance?.setView([loc.lat, loc.lng], 11);
+        });
+    };
+
+    useEffect(() => {
+        let items = [];
+        if (viewMode !== 'elec') {
+            items.push(...gasStations.filter(s => s.prices[selectedFuel]));
+        }
+        if (viewMode !== 'gas') {
+            items.push(...chargers);
+        }
+        setFilteredItems(items.slice(0,1000));
+    }, [gasStations, chargers, viewMode, selectedFuel]);
+
+    if (loading) return <div className="sidebar flex items-center justify-center">Cargando…</div>;
+    if (error) return <div className="sidebar">{error}</div>;
+
+    return (
+        <div className="sidebar">
+            <div className="p-4 bg-blue-600 text-white font-bold">Gasolineras España</div>
+            <div className="sidebar-scroll p-4">
+                {filteredItems.map(i => (
+                    <div key={i.id} className="border-b py-2 text-sm">
+                        {i.name}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// ✅ React 18 correcto
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+
+</script>
 </body>
 </html>
