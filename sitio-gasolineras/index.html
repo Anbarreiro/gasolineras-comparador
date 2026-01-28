@@ -152,4 +152,101 @@ if(prov){
 g=g.filter(s=>s.prov===prov);
 }
 
-g=g.filter(s=>typeof s.prices?.[fuel]==='number' &&
+g=g.filter(s=>typeof s.prices?.[fuel]==='number' && s.prices[fuel]>0);
+res=res.concat(g);
+}
+
+if(mode==='elec'||mode==='both'){
+let e=[...chargers];
+if(search)e=e.filter(c=>c.name?.toLowerCase().includes(search.toLowerCase()));
+if(prov)e=e.filter(c=>c.prov===prov);
+res=res.concat(e);
+}
+
+if(sort==='price'&&mode!=='elec'){
+res.sort((a,b)=>(a.prices?.[fuel]||999)-(b.prices?.[fuel]||999));
+}
+
+if(sort==='distance'&&userLoc){
+res=res.map(i=>({...i,distance:dist(userLoc.lat,userLoc.lng,i.lat,i.lng)}))
+.sort((a,b)=>a.distance-b.distance);
+}
+
+setItems(res.slice(0,1000));
+},[stations,chargers,mode,search,fuel,sort,prov,userLoc]);
+
+useEffect(()=>{
+cluster.clearLayers();
+items.forEach(i=>{
+if(i.lat&&i.lng){
+cluster.addLayer(L.marker([i.lat,i.lng]));
+}
+});
+},[items]);
+
+const toggleCompare=()=>{if(compare)setSelected([]);setCompare(!compare)};
+const toggleSel=i=>{
+if(i.type!=='gas')return;
+selected.find(s=>s.id===i.id)
+?setSelected(selected.filter(s=>s.id!==i.id))
+:selected.length<2
+?setSelected([...selected,i])
+:setSelected([selected[1],i]);
+};
+
+if(loading)return<div className="sidebar flex items-center justify-center">Cargando…</div>;
+if(error)return<div className="sidebar">{error}</div>;
+
+return<>
+<div className="sidebar">
+<div className="p-4 bg-blue-600 text-white flex justify-between">
+<span>⛽ Gasolineras</span>
+{mode==='gas'&&<button onClick={toggleCompare}>{compare?'Cerrar':'Comparar'}</button>}
+</div>
+
+<div className="p-4">
+<input className="w-full border p-2" placeholder="Buscar" value={search} onChange={e=>setSearch(e.target.value)} />
+</div>
+
+<div className="sidebar-scroll">
+{items.map(i=>(
+<div key={i.id} className={`p-3 border-b ${selected.find(s=>s.id===i.id)?'selected-for-compare':''}`}>
+<strong>{i.name}</strong>
+<div className="text-xs">{i.town} · {i.prov}</div>
+{i.type==='gas'&&<div>{i.prices[fuel].toFixed(3)} €/L</div>}
+{compare&&i.type==='gas'&&<button onClick={()=>toggleSel(i)}>Seleccionar</button>}
+</div>
+))}
+</div>
+</div>
+
+<Comparator stations={selected} fuel={fuel} onClose={()=>setSelected([])} />
+</>;
+};
+
+const Comparator=({stations,fuel,onClose})=>{
+const[amt,setAmt]=useState(50);
+if(stations.length!==2)return null;
+const[a,b]=stations;
+const p1=a.prices[fuel],p2=b.prices[fuel];
+const saving=Math.abs(amt/p1-amt/p2)*Math.min(p1,p2);
+
+return(
+<div className="comparator-panel open">
+<div className="p-4 bg-purple-600 text-white flex justify-between">
+<span>⚖️ Comparador</span>
+<button onClick={onClose}>×</button>
+</div>
+<div className="p-4">
+<div>{a.name}: {p1.toFixed(3)}€</div>
+<div>{b.name}: {p2.toFixed(3)}€</div>
+<div className="font-bold mt-2">Ahorro: {saving.toFixed(2)}€</div>
+</div>
+</div>
+);
+};
+
+ReactDOM.render(<App/>,document.getElementById('root'));
+</script>
+</body>
+</html>
