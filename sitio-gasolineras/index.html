@@ -26,9 +26,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow
 .comparator-panel.open{transform:translateX(0)}
 .sidebar-scroll{flex:1;overflow-y:auto}
 .selected-for-compare{background:#dbeafe!important;border-left:4px solid #2563eb!important}
-.toggle-btn{padding:.5rem 1rem;border-radius:.5rem;font-size:.875rem;font-weight:500}
-.toggle-btn.active{background:#2563eb;color:white}
-.toggle-btn.inactive{background:#e5e7eb;color:#6b7280}
 @media(max-width:768px){
 .sidebar{width:100%;height:50vh;top:auto;bottom:0}
 .comparator-panel{width:100%;height:70vh}
@@ -57,8 +54,6 @@ const[search,setSearch]=useState('');
 const[sort,setSort]=useState('price');
 const[userLoc,setUserLoc]=useState(null);
 const[prov,setProv]=useState('');
-const[stats,setStats]=useState({min:0,max:0,avg:0});
-const[mapReady,setMapReady]=useState(false);
 const[compare,setCompare]=useState(false);
 const[selected,setSelected]=useState([]);
 
@@ -76,7 +71,7 @@ map=L.map('map').setView([40.4,-3.7],7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
 cluster=L.markerClusterGroup({maxClusterRadius:50});
 map.addLayer(cluster);
-setTimeout(()=>{map.invalidateSize();setMapReady(true)},200);
+setTimeout(()=>map.invalidateSize(),200);
 }
 loadGas();
 loadElec();
@@ -91,7 +86,6 @@ setStations(d.ListaEESSPrecio.map(s=>({
 id:'g-'+s.IDEESS,
 type:'gas',
 name:s['Rótulo'],
-addr:s['Dirección'],
 town:s['Municipio'],
 prov:s['Provincia'],
 lat:+s['Latitud'].replace(',','.'),
@@ -115,12 +109,10 @@ setChargers(d.map(c=>({
 id:'e-'+c.ID,
 type:'elec',
 name:c.AddressInfo?.Title,
-addr:c.AddressInfo?.AddressLine1,
 town:c.AddressInfo?.Town,
 prov:c.AddressInfo?.StateOrProvince,
 lat:c.AddressInfo?.Latitude,
-lng:c.AddressInfo?.Longitude,
-connections:c.Connections||[]
+lng:c.AddressInfo?.Longitude
 })));
 };
 
@@ -142,102 +134,22 @@ const h=Math.sin(dLat/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math
 return R*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));
 };
 
-useEffect(()=>{
-if(stations.length){
-const p=stations.map(s=>s.prices[fuel]).filter(v=>v>0);
-p.length&&setStats({min:Math.min(...p),max:Math.max(...p),avg:p.reduce((a,b)=>a+b,0)/p.length});
-}
-},[stations,fuel]);
-
+/* 🔧 FILTRADO CORREGIDO */
 useEffect(()=>{
 let res=[];
+
 if(mode==='gas'||mode==='both'){
-let g=[...stations].filter(s=>s.prices[fuel]>0);
-if(search)g=g.filter(s=>s.name.toLowerCase().includes(search.toLowerCase())||s.town.toLowerCase().includes(search.toLowerCase()));
-if(prov)g=g.filter(s=>s.prov===prov);
-res=res.concat(g);
-}
-if(mode==='elec'||mode==='both'){
-let e=[...chargers];
-if(search)e=e.filter(c=>c.name?.toLowerCase().includes(search.toLowerCase()));
-if(prov)e=e.filter(c=>c.prov===prov);
-res=res.concat(e);
-}
-if(sort==='price'&&mode!=='elec')res.sort((a,b)=>(a.prices?.[fuel]||999)-(b.prices?.[fuel]||999));
-if(sort==='distance'&&userLoc)res=res.map(i=>({...i,distance:dist(userLoc.lat,userLoc.lng,i.lat,i.lng)})).sort((a,b)=>a.distance-b.distance);
-setItems(res.slice(0,1000));
-},[stations,chargers,mode,search,fuel,sort,prov,userLoc]);
+let g=[...stations];
 
-useEffect(()=>{
-if(!mapReady)return;
-cluster.clearLayers();
-items.forEach(i=>{
-if(!i.lat||!i.lng)return;
-cluster.addLayer(L.marker([i.lat,i.lng]));
-});
-},[items,mapReady]);
-
-const toggleCompare=()=>{if(compare)setSelected([]);setCompare(!compare)};
-const toggleSel=i=>{
-if(i.type!=='gas')return;
-selected.find(s=>s.id===i.id)?setSelected(selected.filter(s=>s.id!==i.id)):
-selected.length<2?setSelected([...selected,i]):setSelected([selected[1],i]);
-};
-
-if(loading)return<div className="sidebar flex items-center justify-center">Cargando…</div>;
-if(error)return<div className="sidebar">{error}</div>;
-
-return<>
-<div className="sidebar">
-<div className="p-4 bg-blue-600 text-white flex justify-between">
-<span>⛽ Gasolineras</span>
-{mode==='gas'&&<button onClick={toggleCompare}>{compare?'Cerrar':'Comparar'}</button>}
-</div>
-<div className="p-4">
-<input className="w-full border p-2" placeholder="Buscar" value={search} onChange={e=>setSearch(e.target.value)} />
-</div>
-<div className="sidebar-scroll">
-{items.map(i=>(
-<div key={i.id} className={`p-3 border-b ${selected.find(s=>s.id===i.id)?'selected-for-compare':''}`}>
-<strong>{i.name}</strong>
-<div className="text-xs">{i.town} · {i.prov}</div>
-{i.type==='gas'&&<div>{i.prices[fuel].toFixed(3)} €/L</div>}
-{compare&&i.type==='gas'&&<button onClick={()=>toggleSel(i)}>Seleccionar</button>}
-</div>
-))}
-</div>
-</div>
-
-<Comparator stations={selected} fuel={fuel} userLoc={userLoc} onClose={()=>setSelected([])} />
-</>;
-};
-
-const Comparator=({stations,fuel,userLoc,onClose})=>{
-const[amt,setAmt]=useState(50);
-const[cons,setCons]=useState(6);
-if(stations.length!==2)return null;
-
-const[a,b]=stations;
-const p1=a.prices[fuel],p2=b.prices[fuel];
-const lDiff=Math.abs(amt/p1-amt/p2);
-const saving=lDiff*Math.min(p1,p2);
-
-return(
-<div className="comparator-panel open">
-<div className="p-4 bg-purple-600 text-white flex justify-between">
-<span>⚖️ Comparador</span>
-<button onClick={onClose}>×</button>
-</div>
-<div className="p-4">
-<div>{a.name}: {p1.toFixed(3)}€</div>
-<div>{b.name}: {p2.toFixed(3)}€</div>
-<div className="font-bold mt-2">Ahorro: {saving.toFixed(2)}€</div>
-</div>
-</div>
+if(search){
+g=g.filter(s=>
+s.name?.toLowerCase().includes(search.toLowerCase()) ||
+s.town?.toLowerCase().includes(search.toLowerCase())
 );
-};
+}
 
-ReactDOM.render(<App/>,document.getElementById('root'));
-</script>
-</body>
-</html>
+if(prov){
+g=g.filter(s=>s.prov===prov);
+}
+
+g=g.filter(s=>typeof s.prices?.[fuel]==='number' &&
