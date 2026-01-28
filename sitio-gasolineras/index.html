@@ -3,12 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gasolineras y Cargadores - España</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css"/>
+<title>Gasolineras España - Comparador + Eléctrico</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css">
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -18,11 +21,14 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}
 #map{height:100vh;width:100%;position:fixed;top:0;left:0;z-index:1}
-.sidebar{position:fixed;left:0;top:0;width:400px;height:100vh;background:white;box-shadow:2px 0 10px rgba(0,0,0,0.2);z-index:1000;display:flex;flex-direction:column}
-.comparator-panel{position:fixed;right:0;top:0;width:450px;height:100vh;background:white;box-shadow:-2px 0 10px rgba(0,0,0,0.2);z-index:1001;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s}
+.sidebar{position:fixed;left:0;top:0;width:400px;height:100vh;background:white;box-shadow:2px 0 10px rgba(0,0,0,.2);z-index:1000;display:flex;flex-direction:column}
+.comparator-panel{position:fixed;right:0;top:0;width:450px;height:100vh;background:white;box-shadow:-2px 0 10px rgba(0,0,0,.2);z-index:1001;display:flex;flex-direction:column;transform:translateX(100%);transition:.3s}
 .comparator-panel.open{transform:translateX(0)}
 .sidebar-scroll{flex:1;overflow-y:auto}
-.selected-for-compare{background-color:#dbeafe!important;border-left:4px solid #2563eb!important}
+.selected-for-compare{background:#dbeafe!important;border-left:4px solid #2563eb!important}
+.toggle-btn{padding:.5rem 1rem;border-radius:.5rem;font-size:.875rem;font-weight:500}
+.toggle-btn.active{background:#2563eb;color:white}
+.toggle-btn.inactive{background:#e5e7eb;color:#6b7280}
 @media(max-width:768px){
 .sidebar{width:100%;height:50vh;top:auto;bottom:0}
 .comparator-panel{width:100%;height:70vh}
@@ -36,26 +42,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow
 <div id="root"></div>
 
 <script type="text/babel">
-const { useState, useEffect } = React;
-let map=null,cluster=null,userMark=null;
+const {useState,useEffect}=React;
+let map=null,cluster=null,userMarker=null;
 
 const App=()=>{
-const[gas,setGas]=useState([]);
-const[elec,setElec]=useState([]);
+const[stations,setStations]=useState([]);
+const[chargers,setChargers]=useState([]);
 const[items,setItems]=useState([]);
-const[load,setLoad]=useState(true);
-const[err,setErr]=useState(null);
+const[loading,setLoading]=useState(true);
+const[error,setError]=useState(null);
 const[mode,setMode]=useState('gas');
 const[fuel,setFuel]=useState('Precio Gasolina 95 E5');
 const[search,setSearch]=useState('');
 const[sort,setSort]=useState('price');
-const[loc,setLoc]=useState(null);
-const[showF,setShowF]=useState(true);
+const[userLoc,setUserLoc]=useState(null);
 const[prov,setProv]=useState('');
 const[stats,setStats]=useState({min:0,max:0,avg:0});
-const[mapOk,setMapOk]=useState(false);
-const[comp,setComp]=useState(false);
-const[sel,setSel]=useState([]);
+const[mapReady,setMapReady]=useState(false);
+const[compare,setCompare]=useState(false);
+const[selected,setSelected]=useState([]);
 
 const fuels=[
 'Precio Gasolina 95 E5',
@@ -67,23 +72,22 @@ const fuels=[
 
 useEffect(()=>{
 if(!map){
-map=L.map('map').setView([40.4168,-3.7038],7);
+map=L.map('map').setView([40.4,-3.7],7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
 cluster=L.markerClusterGroup({maxClusterRadius:50});
 map.addLayer(cluster);
-setTimeout(()=>{map.invalidateSize();setMapOk(true)},200);
+setTimeout(()=>{map.invalidateSize();setMapReady(true)},200);
 }
-fetchGas();
-fetchElec();
-getLoc();
+loadGas();
+loadElec();
+locateUser();
 },[]);
 
-const fetchGas=async()=>{
+const loadGas=async()=>{
 try{
-setLoad(true);
 const r=await fetch('https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/');
 const d=await r.json();
-setGas(d.ListaEESSPrecio.map(s=>({
+setStations(d.ListaEESSPrecio.map(s=>({
 id:'g-'+s.IDEESS,
 type:'gas',
 name:s['Rótulo'],
@@ -92,7 +96,7 @@ town:s['Municipio'],
 prov:s['Provincia'],
 lat:+s['Latitud'].replace(',','.'),
 lng:+s['Longitud (WGS84)'].replace(',','.'),
-p:{
+prices:{
 'Precio Gasolina 95 E5':+s['Precio Gasolina 95 E5']?.replace(',','.'),
 'Precio Gasolina 98 E5':+s['Precio Gasolina 98 E5']?.replace(',','.'),
 'Precio Gasoleo A':+s['Precio Gasoleo A']?.replace(',','.'),
@@ -100,14 +104,14 @@ p:{
 'Precio Gasoleo Premium':+s['Precio Gasoleo Premium']?.replace(',','.')
 }
 })));
-setLoad(false);
-}catch{setErr('Error')}
+setLoading(false);
+}catch{setError('Error cargando gasolineras')}
 };
 
-const fetchElec=async()=>{
+const loadElec=async()=>{
 const r=await fetch('https://api.openchargemap.io/v3/poi/?output=json&countrycode=ES&maxresults=2000');
 const d=await r.json();
-setElec(d.map(c=>({
+setChargers(d.map(c=>({
 id:'e-'+c.ID,
 type:'elec',
 name:c.AddressInfo?.Title,
@@ -116,82 +120,107 @@ town:c.AddressInfo?.Town,
 prov:c.AddressInfo?.StateOrProvince,
 lat:c.AddressInfo?.Latitude,
 lng:c.AddressInfo?.Longitude,
-conn:c.Connections||[]
+connections:c.Connections||[]
 })));
 };
 
-const getLoc=()=>{
+const locateUser=()=>{
 navigator.geolocation?.getCurrentPosition(p=>{
 const l={lat:p.coords.latitude,lng:p.coords.longitude};
-setLoc(l);
+setUserLoc(l);
 map.setView([l.lat,l.lng],11);
-if(userMark)userMark.remove();
-userMark=L.marker([l.lat,l.lng]).addTo(map);
+if(userMarker)userMarker.remove();
+userMarker=L.marker([l.lat,l.lng]).addTo(map);
 });
 };
 
-useEffect(()=>{
-let res=[];
-if(mode!=='elec')res=res.concat(gas.filter(g=>g.p[fuel]));
-if(mode!=='gas')res=res.concat(elec);
-if(search)res=res.filter(i=>i.name?.toLowerCase().includes(search.toLowerCase())||i.town?.toLowerCase().includes(search.toLowerCase()));
-if(sort==='price'&&mode!=='elec')res.sort((a,b)=>(a.p?.[fuel]||999)-(b.p?.[fuel]||999));
-setItems(res.slice(0,1000));
-},[gas,elec,mode,search,fuel,sort]);
+const dist=(a,b,c,d)=>{
+const R=6371;
+const dLat=(c-a)*Math.PI/180;
+const dLng=(d-b)*Math.PI/180;
+const h=Math.sin(dLat/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dLng/2)**2;
+return R*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));
+};
 
 useEffect(()=>{
-if(!cluster||!mapOk)return;
+if(stations.length){
+const p=stations.map(s=>s.prices[fuel]).filter(v=>v>0);
+p.length&&setStats({min:Math.min(...p),max:Math.max(...p),avg:p.reduce((a,b)=>a+b,0)/p.length});
+}
+},[stations,fuel]);
+
+useEffect(()=>{
+let res=[];
+if(mode==='gas'||mode==='both'){
+let g=[...stations].filter(s=>s.prices[fuel]>0);
+if(search)g=g.filter(s=>s.name.toLowerCase().includes(search.toLowerCase())||s.town.toLowerCase().includes(search.toLowerCase()));
+if(prov)g=g.filter(s=>s.prov===prov);
+res=res.concat(g);
+}
+if(mode==='elec'||mode==='both'){
+let e=[...chargers];
+if(search)e=e.filter(c=>c.name?.toLowerCase().includes(search.toLowerCase()));
+if(prov)e=e.filter(c=>c.prov===prov);
+res=res.concat(e);
+}
+if(sort==='price'&&mode!=='elec')res.sort((a,b)=>(a.prices?.[fuel]||999)-(b.prices?.[fuel]||999));
+if(sort==='distance'&&userLoc)res=res.map(i=>({...i,distance:dist(userLoc.lat,userLoc.lng,i.lat,i.lng)})).sort((a,b)=>a.distance-b.distance);
+setItems(res.slice(0,1000));
+},[stations,chargers,mode,search,fuel,sort,prov,userLoc]);
+
+useEffect(()=>{
+if(!mapReady)return;
 cluster.clearLayers();
 items.forEach(i=>{
 if(!i.lat||!i.lng)return;
 cluster.addLayer(L.marker([i.lat,i.lng]));
 });
-},[items,mapOk]);
+},[items,mapReady]);
 
-const togComp=()=>{if(comp)setSel([]);setComp(!comp)};
-const togSel=s=>{
-if(s.type!=='gas')return;
-if(sel.find(x=>x.id===s.id))setSel(sel.filter(x=>x.id!==s.id));
-else if(sel.length<2)setSel([...sel,s]);
+const toggleCompare=()=>{if(compare)setSelected([]);setCompare(!compare)};
+const toggleSel=i=>{
+if(i.type!=='gas')return;
+selected.find(s=>s.id===i.id)?setSelected(selected.filter(s=>s.id!==i.id)):
+selected.length<2?setSelected([...selected,i]):setSelected([selected[1],i]);
 };
 
-if(load)return<div className="sidebar flex items-center justify-center">Cargando…</div>;
-if(err)return<div className="sidebar">{err}</div>;
+if(loading)return<div className="sidebar flex items-center justify-center">Cargando…</div>;
+if(error)return<div className="sidebar">{error}</div>;
 
 return<>
 <div className="sidebar">
 <div className="p-4 bg-blue-600 text-white flex justify-between">
 <span>⛽ Gasolineras</span>
-<button onClick={togComp}>{comp?'Cerrar':'Comparar'}</button>
+{mode==='gas'&&<button onClick={toggleCompare}>{compare?'Cerrar':'Comparar'}</button>}
 </div>
 <div className="p-4">
-<input value={search} onChange={e=>setSearch(e.target.value)} className="w-full border p-2"/>
+<input className="w-full border p-2" placeholder="Buscar" value={search} onChange={e=>setSearch(e.target.value)} />
 </div>
 <div className="sidebar-scroll">
 {items.map(i=>(
-<div key={i.id} className={`p-3 border-b ${sel.find(x=>x.id===i.id)?'selected-for-compare':''}`}>
+<div key={i.id} className={`p-3 border-b ${selected.find(s=>s.id===i.id)?'selected-for-compare':''}`}>
 <strong>{i.name}</strong>
 <div className="text-xs">{i.town} · {i.prov}</div>
-{i.type==='gas'&&<div>{i.p[fuel]?.toFixed(3)} €/L</div>}
-{comp&&i.type==='gas'&&<button onClick={()=>togSel(i)}>Seleccionar</button>}
+{i.type==='gas'&&<div>{i.prices[fuel].toFixed(3)} €/L</div>}
+{compare&&i.type==='gas'&&<button onClick={()=>toggleSel(i)}>Seleccionar</button>}
 </div>
 ))}
 </div>
 </div>
 
-<Comp stations={sel} fuel={fuel} loc={loc} onClose={()=>setSel([])}/>
+<Comparator stations={selected} fuel={fuel} userLoc={userLoc} onClose={()=>setSelected([])} />
 </>;
 };
 
-const Comp=({stations,fuel,loc,onClose})=>{
+const Comparator=({stations,fuel,userLoc,onClose})=>{
 const[amt,setAmt]=useState(50);
 const[cons,setCons]=useState(6);
 if(stations.length!==2)return null;
 
-const[s1,s2]=stations;
-const p1=s1.p[fuel],p2=s2.p[fuel];
-const lDiff=Math.abs(amt/p2-amt/p1);
-const sav=lDiff*Math.min(p1,p2);
+const[a,b]=stations;
+const p1=a.prices[fuel],p2=b.prices[fuel];
+const lDiff=Math.abs(amt/p1-amt/p2);
+const saving=lDiff*Math.min(p1,p2);
 
 return(
 <div className="comparator-panel open">
@@ -200,9 +229,9 @@ return(
 <button onClick={onClose}>×</button>
 </div>
 <div className="p-4">
-<div>{s1.name}: {p1.toFixed(3)}€</div>
-<div>{s2.name}: {p2.toFixed(3)}€</div>
-<div className="font-bold mt-2">Ahorro: {sav.toFixed(2)}€</div>
+<div>{a.name}: {p1.toFixed(3)}€</div>
+<div>{b.name}: {p2.toFixed(3)}€</div>
+<div className="font-bold mt-2">Ahorro: {saving.toFixed(2)}€</div>
 </div>
 </div>
 );
