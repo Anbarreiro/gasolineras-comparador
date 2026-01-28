@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Gasolineras y Cargadores España</title>
-    
+
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css" />
-    
+
     <!-- JavaScript Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
@@ -17,112 +17,38 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            overflow: hidden;
-        }
-        
-        #map {
-            height: 100vh;
-            width: 100%;
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 1;
-        }
-        
-        .sidebar {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 400px;
-            height: 100vh;
-            background: white;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.2);
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .comparator-panel {
-            position: fixed;
-            right: 0;
-            top: 0;
-            width: 450px;
-            height: 100vh;
-            background: white;
-            box-shadow: -2px 0 10px rgba(0,0,0,0.2);
-            z-index: 1001;
-            display: flex;
-            flex-direction: column;
-            transform: translateX(100%);
-            transition: transform 0.3s ease;
-        }
-        
-        .comparator-panel.open {
-            transform: translateX(0);
-        }
-        
-        .sidebar-scroll {
-            flex: 1;
-            overflow-y: auto;
-        }
-        
-        .sidebar-scroll::-webkit-scrollbar {
-            width: 8px;
-        }
-        
-        .sidebar-scroll::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-        
-        .sidebar-scroll::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 4px;
-        }
-        
-        .selected-for-compare {
-            background-color: #dbeafe !important;
-            border-left: 4px solid #2563eb !important;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow: hidden; }
+        #map { height: 100vh; width: 100%; position: fixed; top: 0; left: 0; z-index: 1; }
+        .sidebar { position: fixed; left: 0; top: 0; width: 400px; height: 100vh; background: white; box-shadow: 2px 0 10px rgba(0,0,0,0.2); z-index: 1000; display: flex; flex-direction: column; }
+        .comparator-panel { position: fixed; right: 0; top: 0; width: 450px; height: 100vh; background: white; box-shadow: -2px 0 10px rgba(0,0,0,0.2); z-index: 1001; display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.3s ease; }
+        .comparator-panel.open { transform: translateX(0); }
+        .sidebar-scroll { flex: 1; overflow-y: auto; }
+        .sidebar-scroll::-webkit-scrollbar { width: 8px; }
+        .sidebar-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        .selected-for-compare { background-color: #dbeafe !important; border-left: 4px solid #2563eb !important; }
         @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                height: 50vh;
-                top: auto;
-                bottom: 0;
-            }
-            .comparator-panel {
-                width: 100%;
-                height: 70vh;
-            }
-            #map {
-                height: 50vh;
-            }
+            .sidebar { width: 100%; height: 50vh; top: auto; bottom: 0; }
+            .comparator-panel { width: 100%; height: 70vh; }
+            #map { height: 50vh; }
         }
     </style>
 </head>
 <body>
     <div id="map"></div>
     <div id="root"></div>
-    
+
     <script type="text/babel">
         const { useState, useEffect } = React;
-        
+
         // Variables globales para el mapa
         let mapInstance = null;
         let markerClusterGroup = null;
         let userMarker = null;
-        
+
         const App = () => {
             // Estados principales
             const [gasStations, setGasStations] = useState([]);
@@ -130,7 +56,7 @@
             const [filteredItems, setFilteredItems] = useState([]);
             const [loading, setLoading] = useState(true);
             const [error, setError] = useState(null);
-            
+
             // Estados de filtros
             const [viewMode, setViewMode] = useState('gas'); // 'gas', 'elec', 'both'
             const [selectedFuel, setSelectedFuel] = useState('Precio Gasolina 95 E5');
@@ -139,13 +65,13 @@
             const [userLocation, setUserLocation] = useState(null);
             const [showFilters, setShowFilters] = useState(true);
             const [selectedProvince, setSelectedProvince] = useState('');
-            
-            // Estados de estadísticas y comparador
+
+            // Estadísticas y comparador
             const [priceStats, setPriceStats] = useState({ min: 0, max: 0, avg: 0 });
             const [mapInitialized, setMapInitialized] = useState(false);
             const [compareMode, setCompareMode] = useState(false);
             const [compareStations, setCompareStations] = useState([]);
-            
+
             const fuelTypes = [
                 'Precio Gasolina 95 E5',
                 'Precio Gasolina 98 E5',
@@ -153,7 +79,7 @@
                 'Precio Gasoleo B',
                 'Precio Gasoleo Premium'
             ];
-            
+
             // Inicialización
             useEffect(() => {
                 initializeMap();
@@ -161,7 +87,7 @@
                 fetchChargers();
                 getUserLocation();
             }, []);
-            
+
             const initializeMap = () => {
                 if (!mapInstance) {
                     mapInstance = L.map('map').setView([40.4168, -3.7038], 7);
@@ -169,29 +95,29 @@
                         attribution: '© OpenStreetMap',
                         maxZoom: 19
                     }).addTo(mapInstance);
-                    
+
                     markerClusterGroup = L.markerClusterGroup({
                         maxClusterRadius: 50,
                         spiderfyOnMaxZoom: true,
                         showCoverageOnHover: false,
                         zoomToBoundsOnClick: true
                     });
-                    
+
                     mapInstance.addLayer(markerClusterGroup);
-                    
+
                     setTimeout(() => {
                         mapInstance.invalidateSize();
                         setMapInitialized(true);
                     }, 200);
                 }
             };
-            
+
             const fetchGasStations = async () => {
                 try {
                     setLoading(true);
                     const response = await fetch('https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/');
                     const data = await response.json();
-                    
+
                     const stations = data.ListaEESSPrecio.map(station => ({
                         id: 'gas-' + station.IDEESS,
                         type: 'gas',
@@ -201,17 +127,17 @@
                         province: station['Provincia'],
                         postalCode: station['C.P.'],
                         schedule: station['Horario'],
-                        lat: parseFloat(station['Latitud'].replace(',', '.')),
-                        lng: parseFloat(station['Longitud (WGS84)'].replace(',', '.')),
+                        lat: parseFloat((station['Latitud'] || '').toString().replace(',', '.')) || null,
+                        lng: parseFloat((station['Longitud (WGS84)'] || '').toString().replace(',', '.')) || null,
                         prices: {
-                            'Precio Gasolina 95 E5': parseFloat(station['Precio Gasolina 95 E5']?.replace(',', '.')) || null,
-                            'Precio Gasolina 98 E5': parseFloat(station['Precio Gasolina 98 E5']?.replace(',', '.')) || null,
-                            'Precio Gasoleo A': parseFloat(station['Precio Gasoleo A']?.replace(',', '.')) || null,
-                            'Precio Gasoleo B': parseFloat(station['Precio Gasoleo B']?.replace(',', '.')) || null,
-                            'Precio Gasoleo Premium': parseFloat(station['Precio Gasoleo Premium']?.replace(',', '.')) || null
+                            'Precio Gasolina 95 E5': parseFloat((station['Precio Gasolina 95 E5'] || '').toString().replace(',', '.')) || null,
+                            'Precio Gasolina 98 E5': parseFloat((station['Precio Gasolina 98 E5'] || '').toString().replace(',', '.')) || null,
+                            'Precio Gasoleo A': parseFloat((station['Precio Gasoleo A'] || '').toString().replace(',', '.')) || null,
+                            'Precio Gasoleo B': parseFloat((station['Precio Gasoleo B'] || '').toString().replace(',', '.')) || null,
+                            'Precio Gasoleo Premium': parseFloat((station['Precio Gasoleo Premium'] || '').toString().replace(',', '.')) || null
                         }
                     }));
-                    
+
                     setGasStations(stations);
                     setLoading(false);
                 } catch (err) {
@@ -219,12 +145,12 @@
                     setLoading(false);
                 }
             };
-            
+
             const fetchChargers = async () => {
                 try {
                     const response = await fetch('https://api.openchargemap.io/v3/poi/?output=json&countrycode=ES&maxresults=2000');
                     const data = await response.json();
-                    
+
                     const chargersList = data.map(charger => ({
                         id: 'charger-' + charger.ID,
                         type: 'charger',
@@ -238,13 +164,13 @@
                         connections: charger.Connections || [],
                         usageCost: charger.UsageCost || 'Información no disponible'
                     }));
-                    
+
                     setChargers(chargersList);
                 } catch (err) {
                     console.error('Error cargando puntos de carga:', err);
                 }
             };
-            
+
             const getUserLocation = () => {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(position => {
@@ -253,27 +179,30 @@
                             lng: position.coords.longitude
                         };
                         setUserLocation(location);
-                        
+
                         if (mapInstance) {
                             mapInstance.setView([location.lat, location.lng], 11);
-                            
+
                             if (userMarker) userMarker.remove();
-                            
+
                             const userIcon = L.divIcon({
                                 html: '<div style="background:#3b82f6;width:20px;height:20px;border-radius:50%;border:3px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3)"></div>',
                                 className: '',
                                 iconSize: [20, 20],
                                 iconAnchor: [10, 10]
                             });
-                            
+
                             userMarker = L.marker([location.lat, location.lng], { icon: userIcon })
                                 .bindPopup('📍 Tu ubicación')
                                 .addTo(mapInstance);
                         }
+                    }, (err) => {
+                        // Si el usuario no permite ubicación, no interrumpimos el uso de la app
+                        console.warn('Geolocation error:', err && err.message);
                     });
                 }
             };
-            
+
             const calculateDistance = (lat1, lon1, lat2, lon2) => {
                 const R = 6371;
                 const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -284,51 +213,53 @@
                 const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
                 return R * c;
             };
-            
+
             // Calcular estadísticas de precios
             useEffect(() => {
                 if (gasStations.length > 0) {
                     const prices = gasStations
                         .map(s => s.prices[selectedFuel])
-                        .filter(p => p > 0);
-                    
+                        .filter(p => typeof p === 'number' && p > 0);
+
                     if (prices.length > 0) {
                         setPriceStats({
                             min: Math.min(...prices),
                             max: Math.max(...prices),
                             avg: prices.reduce((a, b) => a + b, 0) / prices.length
                         });
+                    } else {
+                        setPriceStats({ min: 0, max: 0, avg: 0 });
                     }
                 }
             }, [gasStations, selectedFuel]);
-            
+
             // Filtrar y ordenar items
             useEffect(() => {
                 let result = [];
-                
+
                 if (viewMode === 'gas' || viewMode === 'both') {
                     let gasResults = [...gasStations];
-                    
+
                     if (searchTerm) {
                         gasResults = gasResults.filter(s =>
                             s.town?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             s.province?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            s.postalCode?.includes(searchTerm) ||
+                            (s.postalCode || '').toString().includes(searchTerm) ||
                             s.name?.toLowerCase().includes(searchTerm.toLowerCase())
                         );
                     }
-                    
+
                     if (selectedProvince) {
                         gasResults = gasResults.filter(s => s.province === selectedProvince);
                     }
-                    
-                    gasResults = gasResults.filter(s => s.prices[selectedFuel] > 0);
+
+                    gasResults = gasResults.filter(s => s.prices && s.prices[selectedFuel] > 0);
                     result = result.concat(gasResults);
                 }
-                
+
                 if (viewMode === 'elec' || viewMode === 'both') {
                     let chargerResults = [...chargers];
-                    
+
                     if (searchTerm) {
                         chargerResults = chargerResults.filter(c =>
                             c.town?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -336,14 +267,14 @@
                             c.name?.toLowerCase().includes(searchTerm.toLowerCase())
                         );
                     }
-                    
+
                     if (selectedProvince) {
                         chargerResults = chargerResults.filter(c => c.province === selectedProvince);
                     }
-                    
+
                     result = result.concat(chargerResults);
                 }
-                
+
                 if (sortBy === 'price' && viewMode !== 'elec') {
                     result.sort((a, b) => (a.prices?.[selectedFuel] || 999) - (b.prices?.[selectedFuel] || 999));
                 } else if (sortBy === 'distance' && userLocation) {
@@ -352,126 +283,150 @@
                         distance: calculateDistance(userLocation.lat, userLocation.lng, item.lat, item.lng)
                     })).sort((a, b) => a.distance - b.distance);
                 }
-                
+
                 setFilteredItems(result.slice(0, 1000));
             }, [gasStations, chargers, viewMode, searchTerm, selectedFuel, sortBy, selectedProvince, userLocation]);
-            
+
             const getPriceColor = (price) => {
-                if (!price || !priceStats.min || !priceStats.max) return '#6b7280';
+                if (!price || priceStats.min === 0 && priceStats.max === 0) return '#6b7280';
                 const range = priceStats.max - priceStats.min;
+                if (range === 0) return '#10b981';
                 const lowThreshold = priceStats.min + range * 0.33;
                 const highThreshold = priceStats.min + range * 0.66;
-                
+
                 if (price <= lowThreshold) return '#10b981';
                 if (price <= highThreshold) return '#f59e0b';
                 return '#ef4444';
             };
-            
+
             // Actualizar marcadores en el mapa
             useEffect(() => {
                 if (!mapInstance || !markerClusterGroup || !mapInitialized) return;
-                
+
                 markerClusterGroup.clearLayers();
-                
+
                 filteredItems.forEach(item => {
                     if (item.lat && item.lng && !isNaN(item.lat) && !isNaN(item.lng)) {
                         const isGas = item.type === 'gas';
                         const color = isGas ? getPriceColor(item.prices?.[selectedFuel]) : '#10b981';
-                        
+
+                        // Icono simplificado (evita SVG largos/truncados que rompen el JS)
+                        const iconHtml = `
+                            <div style="
+                                width: 28px;
+                                height: 36px;
+                                background: ${color};
+                                border-radius: 6px;
+                                border: 3px solid white;
+                                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                                display:flex;
+                                align-items:center;
+                                justify-content:center;
+                                color: white;
+                                font-size: 14px;
+                            ">
+                                ${isGas ? '⛽' : '🔌'}
+                            </div>
+                        `;
+
                         const icon = L.divIcon({
-                            html: isGas 
-                                ? `<svg width="32" height="42" viewBox="0 0 32 42"><path d="M16 0C7.2 0 0 7.2 0 16c0 11 16 26 16 26s16-15 16-26c0-8.8-7.2-16-16-16z" fill="${color}"/><circle cx="16" cy="16" r="6" fill="white"/></svg>`
-                                : `<svg width="32" height="42" viewBox="0 0 32 42"><path d="M16 0C7.2 0 0 7.2 0 16c0 11 16 26 16 26s16-15 16-26c0-8.8-7.2-16-16-16z" fill="#10b981"/><path d="M12 10l8 6-8 6V10z" fill="white"/></svg>`,
+                            html: iconHtml,
                             className: '',
-                            iconSize: [32, 42],
-                            iconAnchor: [16, 42],
-                            popupAnchor: [0, -42]
+                            iconSize: [28, 36],
+                            iconAnchor: [14, 36],
+                            popupAnchor: [0, -36]
                         });
-                        
+
                         const marker = L.marker([item.lat, item.lng], { icon: icon });
-                        
+
                         if (isGas) {
                             marker.bindPopup(`
                                 <div style="min-width:220px">
                                     <strong>${item.name}</strong><br/>
                                     <div style="font-size:11px;color:#666;margin-top:4px">
                                         ⛽ Gasolinera<br/>
-                                        📍 ${item.address}<br/>
-                                        ${item.town}, ${item.province}
+                                        📍 ${item.address || ''}<br/>
+                                        ${item.town || ''}, ${item.province || ''}
                                     </div>
                                     <div style="margin-top:8px;padding:8px;background:${color}15;border-radius:6px">
                                         <div style="font-size:24px;font-weight:bold;color:${color}">
-                                            ${item.prices[selectedFuel]?.toFixed(3)} €/L
+                                            ${item.prices?.[selectedFuel] ? item.prices[selectedFuel].toFixed(3) + ' €/L' : 'N/D'}
                                         </div>
                                     </div>
                                     ${item.distance ? `<div style="font-size:11px;margin-top:4px">📍 ${item.distance.toFixed(1)} km</div>` : ''}
                                 </div>
                             `);
                         } else {
-                            const connections = item.connections.slice(0, 2)
+                            const connections = (item.connections || []).slice(0, 2)
                                 .map(c => `${c.ConnectionType?.Title || 'Desconocido'} - ${c.PowerKW || '?'}kW`)
                                 .join('<br/>');
-                            
+
                             marker.bindPopup(`
                                 <div style="min-width:220px">
                                     <strong>${item.name}</strong><br/>
                                     <div style="font-size:11px;color:#666;margin-top:4px">
                                         🔌 Punto de carga<br/>
-                                        📍 ${item.address}<br/>
-                                        ${item.town}, ${item.province}
+                                        📍 ${item.address || ''}<br/>
+                                        ${item.town || ''}, ${item.province || ''}
                                     </div>
                                     <div style="margin-top:8px;padding:8px;background:#10b98115;border-radius:6px">
                                         <div style="font-size:12px;font-weight:bold;color:#10b981">Conectores:</div>
                                         <div style="font-size:11px;margin-top:4px">${connections || 'Sin información'}</div>
-                                        <div style="font-size:11px;margin-top:4px"><strong>Operador:</strong> ${item.operator}</div>
+                                        <div style="font-size:11px;margin-top:4px"><strong>Operador:</strong> ${item.operator || 'Desconocido'}</div>
                                     </div>
                                     ${item.distance ? `<div style="font-size:11px;margin-top:4px">📍 ${item.distance.toFixed(1)} km</div>` : ''}
                                 </div>
                             `);
                         }
-                        
+
                         markerClusterGroup.addLayer(marker);
                     }
                 });
             }, [filteredItems, selectedFuel, priceStats, mapInitialized, viewMode]);
-            
+
             const centerOnItem = (item) => {
                 if (mapInstance && item.lat && item.lng) {
                     mapInstance.setView([item.lat, item.lng], 16);
                     markerClusterGroup.eachLayer(layer => {
-                        if (layer.getLatLng().lat === item.lat && layer.getLatLng().lng === item.lng) {
-                            layer.openPopup();
+                        try {
+                            const ll = layer.getLatLng();
+                            if (ll && ll.lat === item.lat && ll.lng === item.lng) {
+                                layer.openPopup();
+                            }
+                        } catch (e) {
+                            // no todas las capas son Markers con getLatLng
                         }
                     });
                 }
             };
-            
+
             const openDirections = (item) => {
                 const url = userLocation
                     ? `https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${item.lat},${item.lng}`
                     : `https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lng}`;
                 window.open(url, '_blank');
             };
-            
+
             const getPriceBadge = (price) => {
-                if (!price || !priceStats.min) return { text: 'N/D', class: 'bg-gray-100 text-gray-800' };
+                if (!price || priceStats.min === 0 && priceStats.max === 0) return { text: 'N/D', class: 'bg-gray-100 text-gray-800' };
                 const range = priceStats.max - priceStats.min;
+                if (range === 0) return { text: '🟢 Bajo', class: 'bg-green-100 text-green-800' };
                 const lowThreshold = priceStats.min + range * 0.33;
                 const highThreshold = priceStats.min + range * 0.66;
-                
+
                 if (price <= lowThreshold) return { text: '🟢 Bajo', class: 'bg-green-100 text-green-800' };
                 if (price <= highThreshold) return { text: '🟡 Medio', class: 'bg-yellow-100 text-yellow-800' };
                 return { text: '🔴 Alto', class: 'bg-red-100 text-red-800' };
             };
-            
+
             const toggleCompareMode = () => {
                 if (compareMode) setCompareStations([]);
                 setCompareMode(!compareMode);
             };
-            
+
             const toggleStationForCompare = (station) => {
                 if (station.type !== 'gas') return;
-                
+
                 if (compareStations.find(s => s.id === station.id)) {
                     setCompareStations(compareStations.filter(s => s.id !== station.id));
                 } else if (compareStations.length < 2) {
@@ -480,16 +435,16 @@
                     setCompareStations([compareStations[1], station]);
                 }
             };
-            
+
             const isSelectedForCompare = (station) => {
-                return compareStations.find(s => s.id === station.id);
+                return !!compareStations.find(s => s.id === station.id);
             };
-            
+
             const provinces = [...new Set([
                 ...gasStations.map(s => s.province),
                 ...chargers.map(c => c.province)
             ])].filter(Boolean).sort();
-            
+
             if (loading) {
                 return (
                     <div className="sidebar">
@@ -502,14 +457,14 @@
                     </div>
                 );
             }
-            
+
             if (error) {
                 return (
                     <div className="sidebar">
                         <div className="h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
                             <div className="bg-white p-8 rounded-lg shadow-lg text-center">
                                 <p className="text-red-600 mb-4">{error}</p>
-                                <button 
+                                <button
                                     onClick={fetchGasStations}
                                     className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
                                 >
@@ -520,7 +475,7 @@
                     </div>
                 );
             }
-            
+
             return (
                 <>
                     <div className="sidebar">
@@ -532,11 +487,11 @@
                                     <h1 className="text-xl font-bold">Gasolineras España</h1>
                                 </div>
                                 {viewMode === 'gas' && (
-                                    <button 
+                                    <button
                                         onClick={toggleCompareMode}
                                         className={`px-3 py-1.5 rounded text-sm font-medium transition ${
-                                            compareMode 
-                                                ? 'bg-white text-blue-600' 
+                                            compareMode
+                                                ? 'bg-white text-blue-600'
                                                 : 'bg-blue-700 hover:bg-blue-800'
                                         }`}
                                     >
@@ -544,59 +499,59 @@
                                     </button>
                                 )}
                             </div>
-                            
+
                             {/* Toggle de modo */}
                             <div className="flex gap-2 mb-2">
-                                <button 
+                                <button
                                     onClick={() => setViewMode('gas')}
                                     className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition ${
-                                        viewMode === 'gas' 
-                                            ? 'bg-white text-blue-600' 
+                                        viewMode === 'gas'
+                                            ? 'bg-white text-blue-600'
                                             : 'bg-blue-700 hover:bg-blue-800'
                                     }`}
                                 >
                                     ⛽ Gasolina
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => setViewMode('elec')}
                                     className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition ${
-                                        viewMode === 'elec' 
-                                            ? 'bg-white text-blue-600' 
+                                        viewMode === 'elec'
+                                            ? 'bg-white text-blue-600'
                                             : 'bg-blue-700 hover:bg-blue-800'
                                     }`}
                                 >
                                     🔌 Eléctrico
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => setViewMode('both')}
                                     className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition ${
-                                        viewMode === 'both' 
-                                            ? 'bg-white text-blue-600' 
+                                        viewMode === 'both'
+                                            ? 'bg-white text-blue-600'
                                             : 'bg-blue-700 hover:bg-blue-800'
                                     }`}
                                 >
                                     ⚡ Ambos
                                 </button>
                             </div>
-                            
+
                             <div className="text-sm opacity-90">
                                 {filteredItems.length} puntos encontrados
                             </div>
-                            
+
                             {priceStats.min > 0 && viewMode !== 'elec' && (
                                 <div className="mt-2 text-xs opacity-90">
                                     <div>💰 {priceStats.min.toFixed(3)}€ - {priceStats.max.toFixed(3)}€</div>
                                     <div>📊 Media: {priceStats.avg.toFixed(3)}€/L</div>
                                 </div>
                             )}
-                            
+
                             {compareMode && (
                                 <div className="mt-2 text-xs bg-blue-700 bg-opacity-50 p-2 rounded">
                                     ℹ️ Selecciona 2 gasolineras ({compareStations.length}/2)
                                 </div>
                             )}
                         </div>
-                        
+
                         {/* Filtros */}
                         <div className="p-4 border-b">
                             <input
@@ -606,14 +561,14 @@
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm mb-3"
                             />
-                            
-                            <button 
+
+                            <button
                                 onClick={() => setShowFilters(!showFilters)}
                                 className="text-blue-600 text-sm font-medium mb-2"
                             >
                                 {showFilters ? '▲' : '▼'} Filtros
                             </button>
-                            
+
                             {showFilters && (
                                 <div className="space-y-3">
                                     {viewMode !== 'elec' && (
@@ -634,374 +589,402 @@
                                             </select>
                                         </div>
                                     )}
-                                    
+
                                     <div>
                                         <label className="block text-xs font-medium mb-1">
                                             Provincia
-                                            </label>
-                                    <select
-                                        value={selectedProvince}
-                                        onChange={(e) => setSelectedProvince(e.target.value)}
-                                        className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                    >
-                                        <option value="">Todas</option>
-                                        {provinces.map(province => (
-                                            <option key={province} value={province}>
-                                                {province}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        </label>
+                                        <select
+                                            value={selectedProvince}
+                                            onChange={(e) => setSelectedProvince(e.target.value)}
+                                            className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                        >
+                                            <option value="">Todas</option>
+                                            {provinces.map(province => (
+                                                <option key={province} value={province}>
+                                                    {province}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-medium mb-1">
+                                            Ordenar
+                                        </label>
+                                        <select
+                                            value={sortBy}
+                                            onChange={(e) => setSortBy(e.target.value)}
+                                            className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                        >
+                                            <option value="price">Precio</option>
+                                            {userLocation && <option value="distance">Distancia</option>}
+                                        </select>
+                                    </div>
                                 </div>
-                                
-                                <div>
-                                    <label className="block text-xs font-medium mb-1">
-                                        Ordenar
-                                    </label>
-                                    <select
-                                        value={sortBy}
-                                        onChange={(e) => setSortBy(e.target.value)}
-                                        className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            )}
+                        </div>
+
+                        {/* Leyenda de precios */}
+                        {viewMode !== 'elec' && (
+                            <div className="px-4 py-2 bg-gray-50 border-b text-xs flex gap-3">
+                                <span className="flex items-center gap-1">
+                                    <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                                    Bajo
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
+                                    Medio
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                                    Alto
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Lista de items */}
+                        <div className="sidebar-scroll">
+                            {filteredItems.map(item => {
+                                const isGas = item.type === 'gas';
+                                const badge = isGas
+                                    ? getPriceBadge(item.prices?.[selectedFuel])
+                                    : { text: '🔌 Cargador', class: 'bg-green-100 text-green-800' };
+                                const color = isGas
+                                    ? getPriceColor(item.prices?.[selectedFuel])
+                                    : '#10b981';
+                                const selected = isSelectedForCompare(item);
+
+                                return (
+                                    <div
+                                        key={item.id}
+                                        onClick={() => !compareMode && centerOnItem(item)}
+                                        className={`p-4 border-b hover:bg-blue-50 transition ${!compareMode ? 'cursor-pointer' : ''} ${selected ? 'selected-for-compare' : ''}`}
                                     >
-                                        <option value="price">Precio</option>
-                                        {userLocation && <option value="distance">Distancia</option>}
-                                    </select>
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="flex-1 pr-2">
+                                                <div className="text-xs text-gray-500 mb-1">
+                                                    {isGas ? '⛽ Gasolinera' : '🔌 Punto de carga'}
+                                                </div>
+                                                <h3 className="font-semibold text-sm mb-1">
+                                                    {item.name}
+                                                </h3>
+                                                <p className="text-xs text-gray-600">{item.town}</p>
+                                                <p className="text-xs text-gray-500">{item.province}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                {isGas ? (
+                                                    <>
+                                                        <div className="text-xl font-bold" style={{ color }}>
+                                                            {item.prices?.[selectedFuel] ? item.prices[selectedFuel].toFixed(3) : 'N/D'}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">€/L</div>
+                                                    </>
+                                                ) : (
+                                                    <div className="text-sm text-green-600 font-semibold">
+                                                        {item.connections && item.connections[0]?.PowerKW
+                                                            ? `${item.connections[0].PowerKW}kW`
+                                                            : 'Cargador'
+                                                        }
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 mt-2">
+                                            {item.distance && (
+                                                <span className="text-xs text-gray-500">
+                                                    📍 {item.distance.toFixed(1)} km
+                                                </span>
+                                            )}
+                                            <span className={`text-xs px-2 py-1 rounded-full ${badge.class}`}>
+                                                {badge.text}
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-2 flex gap-2">
+                                            {compareMode && isGas && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); toggleStationForCompare(item); }}
+                                                    className={`flex-1 px-3 py-1.5 rounded text-xs font-medium transition ${
+                                                        selected
+                                                            ? 'bg-blue-600 text-white'
+                                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                    }`}
+                                                >
+                                                    {selected ? '✓ Seleccionada' : 'Seleccionar'}
+                                                </button>
+                                            )}
+                                            {!compareMode && userLocation && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        openDirections(item);
+                                                    }}
+                                                    className="flex-1 bg-blue-600 text-white px-3 py-1.5 rounded text-xs hover:bg-blue-700 transition"
+                                                >
+                                                    🧭 Cómo llegar
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Panel comparador */}
+                    <ComparatorPanel
+                        stations={compareStations}
+                        selectedFuel={selectedFuel}
+                        userLocation={userLocation}
+                        onClose={() => setCompareStations([])}
+                    />
+                </>
+            );
+        };
+
+        // Componente del panel comparador
+        const ComparatorPanel = ({ stations, selectedFuel, userLocation, onClose }) => {
+            const [amount, setAmount] = useState(50);
+            const [consumption, setConsumption] = useState(6);
+
+            if (!stations || stations.length !== 2) return null;
+
+            const [station1, station2] = stations;
+            const price1 = station1.prices[selectedFuel];
+            const price2 = station2.prices[selectedFuel];
+
+            // Proteger contra division por cero / valores nulos
+            const safePrice1 = (typeof price1 === 'number' && price1 > 0) ? price1 : null;
+            const safePrice2 = (typeof price2 === 'number' && price2 > 0) ? price2 : null;
+
+            if (!safePrice1 || !safePrice2) {
+                return (
+                    <div className="comparator-panel open">
+                        <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <h2 className="text-xl font-bold">⚖️ Comparador</h2>
+                                <button
+                                    onClick={onClose}
+                                    className="text-2xl hover:bg-white hover:bg-opacity-20 w-8 h-8 rounded"
+                                >
+                                    ×
+                                </button>
+                            </div>
+                            <p className="text-sm opacity-90">Compara y ahorra</p>
+                        </div>
+                        <div className="p-4">
+                            <div className="bg-white rounded-lg shadow-md p-4">
+                                <p className="text-sm text-gray-700">No hay precios válidos para comparar en una o ambas estaciones.</p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            const liters1 = amount / safePrice1;
+            const liters2 = amount / safePrice2;
+            const litersDiff = Math.abs(liters2 - liters1);
+            const kmDiff = (litersDiff / consumption) * 100;
+            const savingInEuros = litersDiff * Math.min(safePrice1, safePrice2);
+
+            const calculateDistance = (lat1, lon1, lat2, lon2) => {
+                const R = 6371;
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+                return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            };
+
+            const distanceBetween = userLocation && station1.lat && station2.lat
+                ? Math.abs(
+                    calculateDistance(userLocation.lat, userLocation.lng, station1.lat, station1.lng) -
+                    calculateDistance(userLocation.lat, userLocation.lng, station2.lat, station2.lng)
+                  )
+                : 0;
+
+            const extraFuelCost = (distanceBetween / 100) * consumption * Math.min(safePrice1, safePrice2);
+            const worthIt = savingInEuros > extraFuelCost;
+
+            return (
+                <div className="comparator-panel open">
+                    <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <h2 className="text-xl font-bold">��️ Comparador</h2>
+                            <button
+                                onClick={onClose}
+                                className="text-2xl hover:bg-white hover:bg-opacity-20 w-8 h-8 rounded"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <p className="text-sm opacity-90">Compara y ahorra</p>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        {/* Configuración */}
+                        <div className="bg-white rounded-lg shadow-md p-4">
+                            <h3 className="font-bold mb-3 text-gray-800">💶 Configuración</h3>
+
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Dinero a gastar: {amount}€
+                                </label>
+                                <input
+                                    type="range"
+                                    min="10"
+                                    max="100"
+                                    step="5"
+                                    value={amount}
+                                    onChange={(e) => setAmount(Number(e.target.value))}
+                                    className="w-full"
+                                />
+                                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>10€</span>
+                                    <span>100€</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Consumo del coche: {consumption} L/100km
+                                </label>
+                                <input
+                                    type="range"
+                                    min="4"
+                                    max="15"
+                                    step="0.5"
+                                    value={consumption}
+                                    onChange={(e) => setConsumption(Number(e.target.value))}
+                                    className="w-full"
+                                />
+                                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>4 L</span>
+                                    <span>15 L</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Comparación */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className={`bg-white rounded-lg shadow-md p-4 ${safePrice1 < safePrice2 ? 'ring-2 ring-green-500' : ''}`}>
+                                <div className="text-xs font-semibold text-gray-500 mb-2">
+                                    {safePrice1 < safePrice2 ? '🏆 MÁS BARATA' : 'MÁS CARA'}
+                                </div>
+                                <h4 className="font-bold text-sm mb-2 text-gray-800">{station1.name}</h4>
+                                <div className="text-2xl font-bold text-blue-600 mb-1">{safePrice1.toFixed(3)}€</div>
+                                <div className="text-xs text-gray-500 mb-3">por litro</div>
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600">Litros:</span>
+                                        <span className="font-semibold">{liters1.toFixed(2)} L</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600">Autonomía:</span>
+                                        <span className="font-semibold">{((liters1 / consumption) * 100).toFixed(0)} km</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className={`bg-white rounded-lg shadow-md p-4 ${safePrice2 < safePrice1 ? 'ring-2 ring-green-500' : ''}`}>
+                                <div className="text-xs font-semibold text-gray-500 mb-2">
+                                    {safePrice2 < safePrice1 ? '🏆 MÁS BARATA' : 'MÁS CARA'}
+                                </div>
+                                <h4 className="font-bold text-sm mb-2 text-gray-800">{station2.name}</h4>
+                                <div className="text-2xl font-bold text-blue-600 mb-1">{safePrice2.toFixed(3)}€</div>
+                                <div className="text-xs text-gray-500 mb-3">por litro</div>
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600">Litros:</span>
+                                        <span className="font-semibold">{liters2.toFixed(2)} L</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600">Autonomía:</span>
+                                        <span className="font-semibold">{((liters2 / consumption) * 100).toFixed(0)} km</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Ahorro */}
+                        <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg shadow-lg p-4">
+                            <h3 className="font-bold mb-3 flex items-center gap-2">
+                                <span className="text-2xl">💰</span>
+                                Diferencia de repostaje
+                            </h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <div className="text-xs opacity-90 mb-1">Litros extra</div>
+                                    <div className="text-2xl font-bold">{litersDiff.toFixed(2)} L</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs opacity-90 mb-1">Kilómetros extra</div>
+                                    <div className="text-2xl font-bold">{kmDiff.toFixed(0)} km</div>
+                                </div>
+                            </div>
+                            <div className="mt-3 pt-3 border-t border-white border-opacity-30">
+                                <div className="text-xs opacity-90 mb-1">Ahorro total</div>
+                                <div className="text-3xl font-bold">{savingInEuros.toFixed(2)}€</div>
+                            </div>
+                        </div>
+
+                        {/* Análisis de desvío */}
+                        {userLocation && distanceBetween > 0 && (
+                            <div className={`rounded-lg shadow-lg p-4 ${
+                                worthIt
+                                    ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white'
+                                    : 'bg-gradient-to-r from-orange-500 to-red-600 text-white'
+                            }`}>
+                                <h3 className="font-bold mb-3 flex items-center gap-2">
+                                    <span className="text-2xl">🎯</span>
+                                    ¿Vale la pena el desvío?
+                                </h3>
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="opacity-90">Distancia extra:</span>
+                                        <span className="font-bold">{distanceBetween.toFixed(1)} km</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="opacity-90">Coste del desvío:</span>
+                                        <span className="font-bold">{extraFuelCost.toFixed(2)}€</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="opacity-90">Ahorro en repostaje:</span>
+                                        <span className="font-bold">{savingInEuros.toFixed(2)}€</span>
+                                    </div>
+                                </div>
+                                <div className="mt-3 pt-3 border-t border-white border-opacity-30">
+                                    <div className="text-lg font-bold text-center">
+                                        {worthIt ? (
+                                            <>
+                                                ✅ SÍ VALE LA PENA
+                                                <div className="text-sm font-normal opacity-90 mt-1">
+                                                    Ahorras {(savingInEuros - extraFuelCost).toFixed(2)}€ netos
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                ⛔ NO COMPENSA
+                                                <div className="text-sm font-normal opacity-90 mt-1">
+                                                    Pierdes {(extraFuelCost - savingInEuros).toFixed(2)}€ por el desvío
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}
                     </div>
-                    
-                    {/* Leyenda de precios */}
-                    {viewMode !== 'elec' && (
-                        <div className="px-4 py-2 bg-gray-50 border-b text-xs flex gap-3">
-                            <span className="flex items-center gap-1">
-                                <span className="w-3 h-3 rounded-full bg-green-500"></span>
-                                Bajo
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
-                                Medio
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <span className="w-3 h-3 rounded-full bg-red-500"></span>
-                                Alto
-                            </span>
-                        </div>
-                    )}
-                    
-                    {/* Lista de items */}
-                    <div className="sidebar-scroll">
-                        {filteredItems.map(item => {
-                            const isGas = item.type === 'gas';
-                            const badge = isGas 
-                                ? getPriceBadge(item.prices?.[selectedFuel])
-                                : { text: '🔌 Cargador', class: 'bg-green-100 text-green-800' };
-                            const color = isGas 
-                                ? getPriceColor(item.prices?.[selectedFuel])
-                                : '#10b981';
-                            const selected = isSelectedForCompare(item);
-                            
-                            return (
-                                <div 
-                                    key={item.id}
-                                    onClick={() => !compareMode && centerOnItem(item)}
-                                    className={`p-4 border-b hover:bg-blue-50 transition ${
-                                        !compareMode && 'cursor-pointer'
-                                    } ${selected ? 'selected-for-compare' : ''}`}
-                                >
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div className="flex-1 pr-2">
-                                            <div className="text-xs text-gray-500 mb-1">
-                                                {isGas ? '⛽ Gasolinera' : '🔌 Punto de carga'}
-                                            </div>
-                                            <h3 className="font-semibold text-sm mb-1">
-                                                {item.name}
-                                            </h3>
-                                            <p className="text-xs text-gray-600">{item.town}</p>
-                                            <p className="text-xs text-gray-500">{item.province}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            {isGas ? (
-                                                <>
-                                                    <div className="text-xl font-bold" style={{ color }}>
-                                                        {item.prices[selectedFuel]?.toFixed(3)}
-                                                    </div>
-                                                    <div className="text-xs text-gray-500">€/L</div>
-                                                </>
-                                            ) : (
-                                                <div className="text-sm text-green-600 font-semibold">
-                                                    {item.connections[0]?.PowerKW 
-                                                        ? `${item.connections[0].PowerKW}kW` 
-                                                        : 'Cargador'
-                                                    }
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-2 mt-2">
-                                        {item.distance && (
-                                            <span className="text-xs text-gray-500">
-                                                📍 {item.distance.toFixed(1)} km
-                                            </span>
-                                        )}
-                                        <span className={`text-xs px-2 py-1 rounded-full ${badge.class}`}>
-                                            {badge.text}
-                                        </span>
-                                    </div>
-                                    
-                                    <div className="mt-2 flex gap-2">
-                                        {compareMode && isGas && (
-                                            <button
-                                                onClick={() => toggleStationForCompare(item)}
-                                                className={`flex-1 px-3 py-1.5 rounded text-xs font-medium transition ${
-                                                    selected 
-                                                        ? 'bg-blue-600 text-white' 
-                                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                                }`}
-                                            >
-                                                {selected ? '✓ Seleccionada' : 'Seleccionar'}
-                                            </button>
-                                        )}
-                                        {!compareMode && userLocation && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    openDirections(item);
-                                                }}
-                                                className="flex-1 bg-blue-600 text-white px-3 py-1.5 rounded text-xs hover:bg-blue-700 transition"
-                                            >
-                                                🧭 Cómo llegar
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
                 </div>
-                
-                {/* Panel comparador */}
-                <ComparatorPanel 
-                    stations={compareStations}
-                    selectedFuel={selectedFuel}
-                    userLocation={userLocation}
-                    onClose={() => setCompareStations([])}
-                />
-            </>
-        );
-    };
-    
-    // Componente del panel comparador
-    const ComparatorPanel = ({ stations, selectedFuel, userLocation, onClose }) => {
-        const [amount, setAmount] = useState(50);
-        const [consumption, setConsumption] = useState(6);
-        
-        if (stations.length !== 2) return null;
-        
-        const [station1, station2] = stations;
-        const price1 = station1.prices[selectedFuel];
-        const price2 = station2.prices[selectedFuel];
-        
-        const liters1 = amount / price1;
-        const liters2 = amount / price2;
-        const litersDiff = Math.abs(liters2 - liters1);
-        const kmDiff = (litersDiff / consumption) * 100;
-        const savingInEuros = litersDiff * Math.min(price1, price2);
-        
-        const calculateDistance = (lat1, lon1, lat2, lon2) => {
-            const R = 6371;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLon/2) * Math.sin(dLon/2);
-            return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            );
         };
-        
-        const distanceBetween = userLocation && station1.lat && station2.lat
-            ? Math.abs(
-                calculateDistance(userLocation.lat, userLocation.lng, station1.lat, station1.lng) -
-                calculateDistance(userLocation.lat, userLocation.lng, station2.lat, station2.lng)
-              )
-            : 0;
-        
-        const extraFuelCost = (distanceBetween / 100) * consumption * Math.min(price1, price2);
-        const worthIt = savingInEuros > extraFuelCost;
-        
-        return (
-            <div className="comparator-panel open">
-                <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4">
-                    <div className="flex items-center justify-between mb-2">
-                        <h2 className="text-xl font-bold">⚖️ Comparador</h2>
-                        <button 
-                            onClick={onClose}
-                            className="text-2xl hover:bg-white hover:bg-opacity-20 w-8 h-8 rounded"
-                        >
-                            ×
-                        </button>
-                    </div>
-                    <p className="text-sm opacity-90">Compara y ahorra</p>
-                </div>
-                
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {/* Configuración */}
-                    <div className="bg-white rounded-lg shadow-md p-4">
-                        <h3 className="font-bold mb-3 text-gray-800">💶 Configuración</h3>
-                        
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Dinero a gastar: {amount}€
-                            </label>
-                            <input 
-                                type="range" 
-                                min="10" 
-                                max="100" 
-                                step="5"
-                                value={amount}
-                                onChange={(e) => setAmount(Number(e.target.value))}
-                                className="w-full"
-                            />
-                            <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                <span>10€</span>
-                                <span>100€</span>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Consumo del coche: {consumption} L/100km
-                            </label>
-                            <input 
-                                type="range" 
-                                min="4" 
-                                max="15" 
-                                step="0.5"
-                                value={consumption}
-                                onChange={(e) => setConsumption(Number(e.target.value))}
-                                className="w-full"
-                            />
-                            <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                <span>4 L</span>
-                                <span>15 L</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    {/* Comparación */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className={`bg-white rounded-lg shadow-md p-4 ${price1 < price2 ? 'ring-2 ring-green-500' : ''}`}>
-                            <div className="text-xs font-semibold text-gray-500 mb-2">
-                                {price1 < price2 ? '🏆 MÁS BARATA' : 'MÁS CARA'}
-                            </div>
-                            <h4 className="font-bold text-sm mb-2 text-gray-800">{station1.name}</h4>
-                            <div className="text-2xl font-bold text-blue-600 mb-1">{price1.toFixed(3)}€</div>
-                            <div className="text-xs text-gray-500 mb-3">por litro</div>
-                            <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-600">Litros:</span>
-                                    <span className="font-semibold">{liters1.toFixed(2)} L</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-600">Autonomía:</span>
-                                    <span className="font-semibold">{((liters1 / consumption) * 100).toFixed(0)} km</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className={`bg-white rounded-lg shadow-md p-4 ${price2 < price1 ? 'ring-2 ring-green-500' : ''}`}>
-                            <div className="text-xs font-semibold text-gray-500 mb-2">
-                                {price2 < price1 ? '🏆 MÁS BARATA' : 'MÁS CARA'}
-                            </div>
-                            <h4 className="font-bold text-sm mb-2 text-gray-800">{station2.name}</h4>
-                            <div className="text-2xl font-bold text-blue-600 mb-1">{price2.toFixed(3)}€</div>
-                            <div className="text-xs text-gray-500 mb-3">por litro</div>
-                            <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-600">Litros:</span>
-                                    <span className="font-semibold">{liters2.toFixed(2)} L</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-600">Autonomía:</span>
-                                    <span className="font-semibold">{((liters2 / consumption) * 100).toFixed(0)} km</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    {/* Ahorro */}
-                    <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg shadow-lg p-4">
-                        <h3 className="font-bold mb-3 flex items-center gap-2">
-                            <span className="text-2xl">💰</span>
-                            Diferencia de repostaje
-                        </h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <div className="text-xs opacity-90 mb-1">Litros extra</div>
-                                <div className="text-2xl font-bold">{litersDiff.toFixed(2)} L</div>
-                            </div>
-                            <div>
-                                <div className="text-xs opacity-90 mb-1">Kilómetros extra</div>
-                                <div className="text-2xl font-bold">{kmDiff.toFixed(0)} km</div>
-                            </div>
-                        </div>
-                        <div className="mt-3 pt-3 border-t border-white border-opacity-30">
-                            <div className="text-xs opacity-90 mb-1">Ahorro total</div>
-                            <div className="text-3xl font-bold">{savingInEuros.toFixed(2)}€</div>
-                        </div>
-                    </div>
-                    
-                    {/* Análisis de desvío */}
-                    {userLocation && distanceBetween > 0 && (
-                        <div className={`rounded-lg shadow-lg p-4 ${
-                            worthIt 
-                                ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white' 
-                                : 'bg-gradient-to-r from-orange-500 to-red-600 text-white'
-                        }`}>
-                            <h3 className="font-bold mb-3 flex items-center gap-2">
-                                <span className="text-2xl">🎯</span>
-                                ¿Vale la pena el desvío?
-                            </h3>
-                            <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                    <span className="opacity-90">Distancia extra:</span>
-                                    <span className="font-bold">{distanceBetween.toFixed(1)} km</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="opacity-90">Coste del desvío:</span>
-                                    <span className="font-bold">{extraFuelCost.toFixed(2)}€</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="opacity-90">Ahorro en repostaje:</span>
-                                    <span className="font-bold">{savingInEuros.toFixed(2)}€</span>
-                                </div>
-                            </div>
-                            <div className="mt-3 pt-3 border-t border-white border-opacity-30">
-                                <div className="text-lg font-bold text-center">
-                                    {worthIt ? (
-                                        <>
-                                            ✅ SÍ VALE LA PENA
-                                            <div className="text-sm font-normal opacity-90 mt-1">
-                                                Ahorras {(savingInEuros - extraFuelCost).toFixed(2)}€ netos
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            ⛔ NO COMPENSA
-                                            <div className="text-sm font-normal opacity-90 mt-1">
-                                                Pierdes {(extraFuelCost - savingInEuros).toFixed(2)}€ por el desvío
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    };
-    
-    ReactDOM.render(<App />, document.getElementById('root'));
-</script>
+
+        // Montar la app en React 18
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
