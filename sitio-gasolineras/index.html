@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gasolineras y Cargadores - España</title>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
@@ -21,15 +21,15 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}
 #map{height:100vh;width:100%;position:fixed;top:0;left:0;z-index:1}
-.sidebar{position:fixed;left:0;top:0;width:400px;height:100vh;background:white;box-shadow:2px 0 10px rgba(0,0,0,.2);z-index:1000;display:flex;flex-direction:column}
-.comparator-panel{position:fixed;right:0;top:0;width:450px;height:100vh;background:white;box-shadow:-2px 0 10px rgba(0,0,0,.2);z-index:1001;display:flex;flex-direction:column;transform:translateX(100%);transition:.3s}
+.sidebar{position:fixed;left:0;top:0;width:400px;height:100vh;background:white;box-shadow:2px 0 10px rgba(0,0,0,0.2);z-index:1000;display:flex;flex-direction:column}
+.comparator-panel{position:fixed;right:0;top:0;width:450px;height:100vh;background:white;box-shadow:-2px 0 10px rgba(0,0,0,0.2);z-index:1001;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s}
 .comparator-panel.open{transform:translateX(0)}
 .sidebar-scroll{flex:1;overflow-y:auto}
-.selected-for-compare{background:#dbeafe!important;border-left:4px solid #2563eb!important}
+.selected-for-compare{background-color:#dbeafe!important;border-left:4px solid #2563eb!important}
 @media(max-width:768px){
-  .sidebar{width:100%;height:50vh;top:auto;bottom:0}
-  .comparator-panel{width:100%;height:70vh}
-  #map{height:50vh}
+.sidebar{width:100%;height:50vh;top:auto;bottom:0}
+.comparator-panel{width:100%;height:70vh}
+#map{height:50vh}
 }
 </style>
 </head>
@@ -40,104 +40,157 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow
 
 <script type="text/babel">
 const { useState, useEffect } = React;
-let map=null, cluster=null, userMark=null;
+let map=null,cluster=null,userMark=null;
 
-/* ========= APP ========= */
-const App = () => {
-  const [gas,setGas]=useState([]);
-  const [elec,setElec]=useState([]);
-  const [items,setItems]=useState([]);
-  const [load,setLoad]=useState(true);
-  const [err,setErr]=useState(null);
-  const [mode,setMode]=useState('gas');
-  const [fuel,setFuel]=useState('Precio Gasolina 95 E5');
-  const [search,setSearch]=useState('');
-  const [sort,setSort]=useState('price');
-  const [loc,setLoc]=useState(null);
-  const [prov,setProv]=useState('');
-  const [stats,setStats]=useState({min:0,max:0,avg:0});
-  const [mapOk,setMapOk]=useState(false);
-  const [comp,setComp]=useState(false);
-  const [sel,setSel]=useState([]);
+const App=()=>{
+const[gas,setGas]=useState([]);
+const[elec,setElec]=useState([]);
+const[items,setItems]=useState([]);
+const[load,setLoad]=useState(!0);
+const[err,setErr]=useState(null);
+const[mode,setMode]=useState('gas');
+const[fuel,setFuel]=useState('Precio Gasolina 95 E5');
+const[search,setSearch]=useState('');
+const[sort,setSort]=useState('price');
+const[loc,setLoc]=useState(null);
+const[showF,setShowF]=useState(!0);
+const[prov,setProv]=useState('');
+const[stats,setStats]=useState({min:0,max:0,avg:0});
+const[mapOk,setMapOk]=useState(!1);
+const[comp,setComp]=useState(!1);
+const[sel,setSel]=useState([]);
 
-  const fuels=[
-    'Precio Gasolina 95 E5',
-    'Precio Gasolina 98 E5',
-    'Precio Gasoleo A',
-    'Precio Gasoleo B',
-    'Precio Gasoleo Premium'
-  ];
+const fuels=[
+'Precio Gasolina 95 E5',
+'Precio Gasolina 98 E5',
+'Precio Gasoleo A',
+'Precio Gasoleo B',
+'Precio Gasoleo Premium'
+];
 
-  useEffect(()=>{
-    if(!map){
-      map=L.map('map').setView([40.4,-3.7],7);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
-      cluster=L.markerClusterGroup({maxClusterRadius:50});
-      map.addLayer(cluster);
-      setTimeout(()=>{map.invalidateSize();setMapOk(true)},200);
-    }
-    fetchGas();
-    fetchElec();
-    getLoc();
-  },[]);
+useEffect(()=>{
+if(!map){
+map=L.map('map').setView([40.4168,-3.7038],7);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
+cluster=L.markerClusterGroup({maxClusterRadius:50});
+map.addLayer(cluster);
+setTimeout(()=>{map.invalidateSize();setMapOk(!0)},200);
+}
+fetchGas();
+fetchElec();
+getLoc();
+},[]);
 
-  const fetchGas=async()=>{
-    try{
-      setLoad(true);
-      const r=await fetch('https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/');
-      const d=await r.json();
-      setGas(d.ListaEESSPrecio.map(s=>({
-        id:'g-'+s.IDEESS,
-        type:'gas',
-        name:s['Rótulo'],
-        town:s['Municipio'],
-        prov:s['Provincia'],
-        lat:+s['Latitud'].replace(',','.'),
-        lng:+s['Longitud (WGS84)'].replace(',','.'),
-        p:{[fuel]:+s[fuel]?.replace(',','.')}
-      })));
-      setLoad(false);
-    }catch{ setErr('Error cargando gasolineras'); }
-  };
-
-  const fetchElec=async()=>{
-    const r=await fetch('https://api.openchargemap.io/v3/poi/?output=json&countrycode=ES&maxresults=2000');
-    setElec(await r.json());
-  };
-
-  const getLoc=()=>{
-    navigator.geolocation?.getCurrentPosition(p=>{
-      const l={lat:p.coords.latitude,lng:p.coords.longitude};
-      setLoc(l);
-      map?.setView([l.lat,l.lng],11);
-    });
-  };
-
-  if(load) return <div className="sidebar flex items-center justify-center">Cargando…</div>;
-  if(err) return <div className="sidebar">{err}</div>;
-
-  return (
-    <div className="sidebar">
-      <div className="p-4 font-bold bg-blue-600 text-white">Gasolineras</div>
-      <div className="sidebar-scroll p-4">
-        {items.length || 'Datos cargados correctamente ✅'}
-      </div>
-      <Comp stations={sel} fuel={fuel} loc={loc} onClose={()=>setSel([])} />
-    </div>
-  );
+const fetchGas=async()=>{
+try{
+setLoad(!0);
+const r=await fetch('https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/');
+const d=await r.json();
+const g=d.ListaEESSPrecio.map(s=>({
+id:'g-'+s.IDEESS,
+type:'gas',
+name:s['Rótulo']||'Sin nombre',
+addr:s['Dirección'],
+town:s['Municipio'],
+prov:s['Provincia'],
+lat:parseFloat(s['Latitud'].replace(',','.')),
+lng:parseFloat(s['Longitud (WGS84)'].replace(',','.')),
+p:{
+'Precio Gasolina 95 E5':parseFloat(s['Precio Gasolina 95 E5']?.replace(',','.'))||null,
+'Precio Gasolina 98 E5':parseFloat(s['Precio Gasolina 98 E5']?.replace(',','.'))||null,
+'Precio Gasoleo A':parseFloat(s['Precio Gasoleo A']?.replace(',','.'))||null,
+'Precio Gasoleo B':parseFloat(s['Precio Gasoleo B']?.replace(',','.'))||null,
+'Precio Gasoleo Premium':parseFloat(s['Precio Gasoleo Premium']?.replace(',','.'))||null
+}}));
+setGas(g);
+setLoad(!1);
+}catch(e){setErr('Error');setLoad(!1)}
 };
 
-/* ========= COMPARADOR ========= */
-const Comp = ({stations,fuel,loc,onClose}) => {
-  if(stations.length!==2) return null;
-  return (
-    <div className={`comparator-panel open rounded-lg shadow-lg p-4 bg-white`}>
-      <button onClick={onClose}>Cerrar</button>
-    </div>
-  );
+const fetchElec=async()=>{
+try{
+const r=await fetch('https://api.openchargemap.io/v3/poi/?output=json&countrycode=ES&maxresults=2000');
+const d=await r.json();
+const e=d.map(c=>({
+id:'e-'+c.ID,
+type:'elec',
+name:c.AddressInfo?.Title||'Cargador',
+addr:c.AddressInfo?.AddressLine1||'',
+town:c.AddressInfo?.Town||'',
+prov:c.AddressInfo?.StateOrProvince||'',
+lat:c.AddressInfo?.Latitude,
+lng:c.AddressInfo?.Longitude,
+op:c.OperatorInfo?.Title||'?',
+conn:c.Connections||[],
+cost:c.UsageCost||'?'
+}));
+setElec(e);
+}catch(e){console.error(e)}
 };
 
-ReactDOM.render(<App/>, document.getElementById('root'));
+const getLoc=()=>{
+if(navigator.geolocation){
+navigator.geolocation.getCurrentPosition(p=>{
+const l={lat:p.coords.latitude,lng:p.coords.longitude};
+setLoc(l);
+if(map){
+map.setView([l.lat,l.lng],11);
+if(userMark)userMark.remove();
+userMark=L.marker([l.lat,l.lng]).bindPopup('📍 Tu ubicación').addTo(map);
+}
+});
+}
+};
+
+const dist=(a,b,c,d)=>{
+const R=6371,x=(c-a)*Math.PI/180,y=(d-b)*Math.PI/180,z=Math.sin(x/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(y/2)**2;
+return R*2*Math.atan2(Math.sqrt(z),Math.sqrt(1-z));
+};
+
+useEffect(()=>{
+if(gas.length>0){
+const pr=gas.map(s=>s.p[fuel]).filter(p=>p>0);
+if(pr.length>0)setStats({min:Math.min(...pr),max:Math.max(...pr),avg:pr.reduce((a,b)=>a+b,0)/pr.length});
+}
+},[gas,fuel]);
+
+useEffect(()=>{
+let res=[];
+if(mode==='gas'||mode==='both'){
+let g=[...gas];
+if(search)g=g.filter(s=>s.town?.toLowerCase().includes(search.toLowerCase())||s.prov?.toLowerCase().includes(search.toLowerCase())||s.name?.toLowerCase().includes(search.toLowerCase()));
+if(prov)g=g.filter(s=>s.prov===prov);
+g=g.filter(s=>s.p[fuel]>0);
+res=res.concat(g);
+}
+if(mode==='elec'||mode==='both'){
+let e=[...elec];
+if(search)e=e.filter(c=>c.town?.toLowerCase().includes(search.toLowerCase())||c.prov?.toLowerCase().includes(search.toLowerCase())||c.name?.toLowerCase().includes(search.toLowerCase()));
+if(prov)e=e.filter(c=>c.prov===prov);
+res=res.concat(e);
+}
+if(sort==='price'&&mode!=='elec')res.sort((a,b)=>(a.p?.[fuel]||999)-(b.p?.[fuel]||999));
+else if(sort==='distance'&&loc)res=res.map(i=>({...i,distance:dist(loc.lat,loc.lng,i.lat,i.lng)})).sort((a,b)=>a.distance-b.distance);
+setItems(res.slice(0,1000));
+},[gas,elec,mode,search,fuel,sort,prov,loc]);
+
+useEffect(()=>{
+if(!map||!cluster||!mapOk)return;
+cluster.clearLayers();
+items.forEach(i=>{
+if(i.lat&&i.lng){
+const m=L.marker([i.lat,i.lng]);
+cluster.addLayer(m);
+}
+});
+},[items,mapOk]);
+
+const togComp=()=>{if(comp)setSel([]);setComp(!comp)};
+
+return <div className="sidebar">APP CARGADA</div>;
+};
+
+ReactDOM.render(<App/>,document.getElementById('root'));
 </script>
 </body>
 </html>
